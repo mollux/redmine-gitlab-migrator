@@ -2,13 +2,13 @@
 import argparse
 import logging
 import re
-import sys
 
 from redmine_gitlab_migrator.redmine import RedmineProject, RedmineClient
 from redmine_gitlab_migrator.gitlab import GitlabProject, GitlabClient
 from redmine_gitlab_migrator.converters import convert_issue, convert_version
 from redmine_gitlab_migrator.logging import setup_module_logging
 from redmine_gitlab_migrator import sql
+from sys import exit
 
 
 """Migration commands for issues and roadmaps from redmine to gitlab
@@ -111,6 +111,7 @@ def check_users(redmine_project, gitlab_project):
 
     return gitlab_project.get_instance().check_users_exist(redmine_user_names)
 
+
 def check_no_issue(redmine_project, gitlab_project):
     return len(gitlab_project.get_issues()) == 0
 
@@ -163,8 +164,7 @@ def perform_migrate_issues(args):
     # convert issues
     log.info('Converting issues')
     issues_data = (
-        convert_issue(args.redmine_key,
-            i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields)
+        convert_issue(args.redmine_key, i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields)
         for i in issues)
 
     # create issues
@@ -193,6 +193,7 @@ def perform_migrate_issues(args):
             except:
                 log.info('create issue "{}" failed'.format(data['title']))
                 raise
+
 
 def perform_migrate_iid(args):
     """ Shoud occur after the issues migration
@@ -235,11 +236,11 @@ def perform_migrate_iid(args):
         # KEY (project_id, iid)=(37, 83) already exists
         sql_cmd1 = sql.UPDATE_IID_ISSUES.format(
             regex=regex_saved_iid, project_id=gitlab_project_id)
-        out1 = sql.run_query(sql_cmd1)
+        sql.run_query(sql_cmd1)
 
         sql_cmd2 = sql.MIGRATE_IID_ISSUES.format(
             regex=regex_saved_iid, project_id=gitlab_project_id)
-        out2 = sql.run_query(sql_cmd2)
+        sql.run_query(sql_cmd2)
 
         try:
             m = re.match(
@@ -279,6 +280,7 @@ def perform_migrate_roadmap(args):
             created = gitlab_project.create_milestone(data, meta)
             log.info("Version {}".format(created['title']))
 
+
 def perform_redirect(args):
     redmine = RedmineClient(args.redmine_key, args.no_verify)
     redmine_project = RedmineProject(args.redmine_project_url, redmine)
@@ -292,6 +294,7 @@ def perform_redirect(args):
 
     for issue in redmine_issues:
         print('RedirectMatch 301 ^/issues/{}$ {}/issues/{}'.format(issue['id'], args.gitlab_project_url, issue['id']))
+
 
 def main():
     args = parse_args()

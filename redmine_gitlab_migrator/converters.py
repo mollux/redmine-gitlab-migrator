@@ -5,12 +5,12 @@ import logging
 
 log = logging.getLogger(__name__)
 
+
 # Utils
-
-
 def redmine_uid_to_gitlab_user(redmine_id, redmine_user_index, gitlab_user_index):
     redmine_login = redmine_user_index[redmine_id]['login']
     return gitlab_user_index[redmine_login]
+
 
 def convert_attachment(redmine_issue_attachment, redmine_api_key):
     """ Convert a list of redmine attachments to gitlab uploads
@@ -80,9 +80,10 @@ def relations_to_string(relations, children, parent_id, issue_id):
         l.append('  * {} #{}'.format('child', id))
 
     if parent_id > 0:
-       l.append('  * {} #{}'.format('parent', parent_id))
+        l.append('  * {} #{}'.format('parent', parent_id))
 
     return "\n".join(l)
+
 
 def changesets_to_string(changesets):
     """ Convert redmine formal changesets to some denormalized string
@@ -101,6 +102,7 @@ def changesets_to_string(changesets):
 
     return "\n".join(l)
 
+
 def custom_fields_to_string(custom_fields, custom_fields_include):
     """ Convert redmine custom fields to some denormalized string
 
@@ -117,8 +119,8 @@ def custom_fields_to_string(custom_fields, custom_fields_include):
 
     return "\n".join(l)
 
-# Convertor
 
+# Convertor
 def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_user_index,
                   gitlab_milestones_index, closed_states, custom_fields_include):
 

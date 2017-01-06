@@ -75,7 +75,7 @@ class GitlabProject(Project):
                 projectId = project_attributes.get('id')
 
         self.project_id = projectId
-        if projectId == -1 :
+        if projectId == -1:
             raise ValueError('Could not get project_id for path_with_namespace: {}'.format(path_with_namespace))
 
         self.api_url = (
