@@ -146,11 +146,19 @@ class GitlabProject(Project):
                 issue_notes_url, data=note_data,
                 headers={'SUDO': note_meta['sudo_user']})
 
+        edit_data = {
+            'created_at': data['created_at'],
+            'updated_at': meta['update_date'],
+        }
+        self.api.put(issue_url, data=edit_data, headers={'SUDO': meta['sudo_user']})
+
         # Handle closed status
         if meta['must_close']:
-            altered_issue = issue.copy()
-            altered_issue['state_event'] = 'close'
-            self.api.put(issue_url, data=altered_issue)
+            edit_data = {
+                'state_event': 'close',
+                'updated_at': meta['close_date'],
+            }
+            self.api.put(issue_url, data=edit_data, headers={'SUDO': meta['sudo_user']})
 
         return issue
 

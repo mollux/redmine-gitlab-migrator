@@ -55,7 +55,7 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index)
                     'Redmine user {} is unknown, attribute note '
                     'to current admin\n'.format(entry['user']))
                 author = None
-            yield {'body': body}, {'sudo_user': author}
+            yield {'body': body, 'created_at': entry['created_on']}, {'sudo_user': author}
 
 
 def relations_to_string(relations, children, parent_id, issue_id):
@@ -127,10 +127,13 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     if redmine_issue.get('closed_on', None):
         # quick'n dirty extract date
         closed = True
+        closed_on = redmine_issue['closed_on']
     elif issue_state.lower() in closed_states:
         closed = True
+        closed_on = ''
     else:
         closed = False
+        closed_on = ''
 
     relations = redmine_issue.get('relations', [])
     children = redmine_issue.get('children', [])
@@ -174,6 +177,7 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
         ),
         'labels': ','.join(labels),
         'due_date': due_date,
+        'created_at': redmine_issue['created_on'],
     }
 
     version = redmine_issue.get('fixed_version', None)
@@ -195,6 +199,8 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
         'notes': list(convert_notes(redmine_issue['journals'],
                                     redmine_user_index, gitlab_user_index)),
         'must_close': closed,
+        'close_date': closed_on,
+        'update_date': redmine_issue['updated_on'],
         'uploads': list(convert_attachment(a, redmine_api_key) for a in attachments)
     }
 
