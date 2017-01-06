@@ -44,8 +44,7 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index)
     for entry in redmine_issue_journals:
         journal_notes = entry.get('notes', '')
         if len(journal_notes) > 0:
-            body = "{}\n\n*(from redmine: written on {})*".format(
-                journal_notes, entry['created_on'][:10])
+            body = "{}".format(journal_notes)
             try:
                 author = redmine_uid_to_gitlab_user(
                     entry['user']['id'], redmine_user_index, gitlab_user_index)['username']
@@ -127,13 +126,10 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
 
     if redmine_issue.get('closed_on', None):
         # quick'n dirty extract date
-        close_text = ', closed on {}'.format(redmine_issue['closed_on'][:10])
         closed = True
     elif issue_state.lower() in closed_states:
-        close_text = ', closed (state: {})'.format(issue_state)
         closed = True
     else:
-        close_text = ''
         closed = False
 
     relations = redmine_issue.get('relations', [])
@@ -170,10 +166,8 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     data = {
         'title': '-RM-{}-MR-{}'.format(
             redmine_issue['id'], redmine_issue['subject']),
-        'description': '{}\n\n*(from redmine: created on {}{})*\n{}{}{}'.format(
+        'description': '{}\n{}{}{}'.format(
             redmine_issue['description'],
-            redmine_issue['created_on'][:10],
-            close_text,
             relations_text,
             changesets_text,
             custom_fields_text
