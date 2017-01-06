@@ -5,6 +5,7 @@ from . import APIClient, Project
 
 ANONYMOUS_USER_ID = 2
 
+
 class RedmineClient(APIClient):
     PAGE_MAX_SIZE = 100
 

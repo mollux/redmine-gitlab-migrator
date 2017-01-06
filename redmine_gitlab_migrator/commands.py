@@ -77,12 +77,12 @@ def parse_args():
     parser_issues.add_argument(
         '--closed-states',
         required=False,
-        help="comma seperated list of redmine states that close an issue, default closed,rejected")
+        help="comma separated list of redmine states that close an issue, default closed,rejected")
 
     parser_issues.add_argument(
         '--custom-fields',
         required=False,
-        help="comma seperated list of redmine custom filds to migrate")
+        help="comma separated list of redmine custom fields to migrated")
 
     return parser.parse_args()
 
@@ -145,7 +145,7 @@ def perform_migrate_issues(args):
     gitlab_users_index = gitlab_instance.get_users_index()
     redmine_users_index = redmine_project.get_users_index()
     milestones_index = gitlab_project.get_milestones_index()
-    
+
     log.debug('GitLab milestones are: {}'.format(', '.join(milestones_index) + ' '))
 
     checks = [
@@ -236,7 +236,7 @@ def perform_migrate_iid(args):
         sql_cmd1 = sql.UPDATE_IID_ISSUES.format(
             regex=regex_saved_iid, project_id=gitlab_project_id)
         out1 = sql.run_query(sql_cmd1)
-  
+
         sql_cmd2 = sql.MIGRATE_IID_ISSUES.format(
             regex=regex_saved_iid, project_id=gitlab_project_id)
         out2 = sql.run_query(sql_cmd2)
