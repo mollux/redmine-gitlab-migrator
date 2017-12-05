@@ -209,8 +209,8 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     assigned_to = redmine_issue.get('assigned_to', None)
     if assigned_to is not None:
         try:
-            data['assignee_id'] = redmine_uid_to_gitlab_user(
-                assigned_to['id'], redmine_user_index, gitlab_user_index)['id']
+            data['assignee_ids'] = [redmine_uid_to_gitlab_user(
+                assigned_to['id'], redmine_user_index, gitlab_user_index)['id']]
         except KeyError:
             log.warning(
                 'Redmine issue #{} assignee is anonymous. gitlab assinee is attributed '

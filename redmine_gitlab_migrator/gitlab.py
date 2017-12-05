@@ -57,7 +57,7 @@ class GitlabProject(Project):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.instance_url = '{}/api/v3'.format(
+        self.instance_url = '{}/api/v4'.format(
             self._url_match.group('base_url'))
 
         # fetch project_id via api, thanks to lewicki-pk
@@ -79,7 +79,7 @@ class GitlabProject(Project):
             raise ValueError('Could not get project_id for path_with_namespace: {}'.format(path_with_namespace))
 
         self.api_url = (
-            '{base_url}api/v3/projects/'.format(
+            '{base_url}api/v4/projects/'.format(
                 **self._url_match.groupdict())) + str(projectId)
 
     def is_repository_empty(self):
@@ -137,7 +137,7 @@ class GitlabProject(Project):
         issue = self.api.post(
             issues_url, data=data, headers={'SUDO': meta['sudo_user']})
 
-        issue_url = '{}/{}'.format(issues_url, issue['id'])
+        issue_url = '{}/{}'.format(issues_url, issue['iid'])
 
         # Handle issues notes
         issue_notes_url = '{}/notes'.format(issue_url, 'notes')
