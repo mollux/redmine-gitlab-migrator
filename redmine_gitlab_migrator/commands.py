@@ -245,6 +245,14 @@ def perform_migrate_iid(args):
             regex=regex_saved_iid, project_id=gitlab_project_id)
         sql.run_query(sql_cmd2)
 
+        sql_cmd3 = sql.REPAIR_ISSUE_LINKS.format(
+            project_id=gitlab_project_id)
+        sql.run_query(sql_cmd3)
+
+        sql_cmd4 = sql.REPAIR_NOTE_LINKS.format(
+            project_id=gitlab_project_id)
+        sql.run_query(sql_cmd4)
+
         try:
             m = re.match(
                 r'\s*(\d+)\s*', output,
