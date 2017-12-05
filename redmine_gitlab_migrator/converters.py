@@ -2,6 +2,7 @@
 """
 
 import logging
+from redmine_gitlab_migrator.textileconverter import TextileConverter
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def convert_attachment(redmine_issue_attachment, redmine_api_key):
     return uploads
 
 
-def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index):
+def convert_notes(redmine_issue_journals, redmine_issue_attachments, redmine_user_index, gitlab_user_index, redmine_statuses_index, redmine_priorities_index, redmine_trackers_index):
     """ Convert a list of redmine journal entries to gitlab notes
 
     Filters out the empty notes (ex: bare status change)
@@ -40,22 +41,60 @@ def convert_notes(redmine_issue_journals, redmine_user_index, gitlab_user_index)
         an issue note and meta a dict (containing, at the moment, only a
         "sudo_user" key).
     """
+    textile_converter = TextileConverter()
 
     for entry in redmine_issue_journals:
+        try:
+            author = redmine_uid_to_gitlab_user(
+                entry['user']['id'], redmine_user_index, gitlab_user_index)['username']
+        except KeyError:
+            # In some cases you have anonymous notes, which do not exist in
+            # gitlab.
+            log.warning(
+                'Redmine user {} is unknown, attribute note '
+                'to current admin\n'.format(entry['user']))
+            author = None
+
         journal_notes = entry.get('notes', '')
+        journal_details = entry.get('details', [])
+        attachments = []
+        body = ''
         if len(journal_notes) > 0:
-            body = "{}".format(journal_notes)
-            try:
-                author = redmine_uid_to_gitlab_user(
-                    entry['user']['id'], redmine_user_index, gitlab_user_index)['username']
-            except KeyError:
-                # In some cases you have anonymous notes, which do not exist in
-                # gitlab.
-                log.warning(
-                    'Redmine user {} is unknown, attribute note '
-                    'to current admin\n'.format(entry['user']))
-                author = None
-            yield {'body': body, 'created_at': entry['created_on']}, {'sudo_user': author}
+            body = "{}".format(textile_converter.convert(journal_notes))
+
+        for detail_entry in journal_details:
+            if detail_entry['property'] == "attr":
+                if detail_entry['name'] in ["status_id", "priority_id", "tracker_id"]:
+
+                    if detail_entry['name'] == "status_id":
+                        unmigrated_status = ["Nieuw", "Gesloten"]
+                        old_label = redmine_statuses_index[detail_entry['old_value']]['name']
+                        new_label = redmine_statuses_index[detail_entry['new_value']]['name']
+                    elif detail_entry['name'] == "priority_id":
+                        unmigrated_status = ["Normaal"]
+                        old_label = redmine_priorities_index[detail_entry['old_value']]['name']
+                        new_label = redmine_priorities_index[detail_entry['new_value']]['name']
+                    elif detail_entry['name'] == "tracker_id":
+                        unmigrated_status = []
+                        old_label = redmine_trackers_index[detail_entry['old_value']]['name']
+                        new_label = redmine_trackers_index[detail_entry['new_value']]['name']
+
+                    if old_label in unmigrated_status:
+                        old_label = None
+                    if new_label in unmigrated_status:
+                        new_label = None
+
+                    if old_label or new_label:
+                        yield {'body': '', 'system': 'true', 'noteable_type': 'label', 'new_label': new_label, 'old_label': old_label, 'created_at': entry['created_on'], 'changed_at': entry['created_on']}, {'sudo_user': author}
+
+                elif detail_entry['name'] == "description":
+                    yield {'body': '', 'system': 'true', 'noteable_type': 'description', 'created_at': entry['created_on'], 'changed_at': entry['created_on']}, {'sudo_user': author}
+
+            elif detail_entry['property'] == "attachment":
+                attachments.append(redmine_issue_attachments[detail_entry['name']])
+
+        if len(body) > 0:
+            yield {'body': body, 'created_at': entry['created_on'], 'updated_at': entry['created_on']}, {'sudo_user': author, 'uploads': attachments}
 
 
 def relations_to_string(relations, children, parent_id, issue_id):
@@ -122,7 +161,7 @@ def custom_fields_to_string(custom_fields, custom_fields_include):
 
 # Convertor
 def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_user_index,
-                  gitlab_milestones_index, closed_states, custom_fields_include):
+                  gitlab_milestones_index, closed_states, custom_fields_include, redmine_statuses_index, redmine_priorities_index, redmine_trackers_index):
 
     issue_state = redmine_issue['status']['name']
 
@@ -147,11 +186,6 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     if len(relations_text) > 0:
         relations_text = "\n* Relations:\n" + relations_text
 
-    changesets = redmine_issue.get('changesets', [])
-    changesets_text = changesets_to_string(changesets)
-    if len(changesets_text) > 0:
-        changesets_text = "\n* Changesets:\n" + changesets_text
-
     custom_fields = redmine_issue.get('custom_fields', [])
     custom_fields_text = custom_fields_to_string(custom_fields, custom_fields_include)
     if len(custom_fields_text) > 0:
@@ -160,21 +194,23 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
     labels = [redmine_issue['tracker']['name']]
     if (redmine_issue.get('category')):
         labels.append(redmine_issue['category']['name'])
-    if (redmine_issue.get('status')):
+    if (redmine_issue.get('status') and redmine_issue['status']['name'] not in ["Nieuw", "Gesloten"]):
         labels.append(redmine_issue['status']['name'])
-    if (redmine_issue.get('priority')):
+    if (redmine_issue.get('priority') and redmine_issue['priority']['name'] not in ["Normaal"]):
         labels.append(redmine_issue['priority']['name'])
 
     attachments = redmine_issue.get('attachments', [])
+    attachments = {str(i["id"]): convert_attachment(i, redmine_api_key) for i in attachments}
+
     due_date = redmine_issue.get('due_date', None)
+    textile_converter = TextileConverter()
 
     data = {
         'title': '-RM-{}-MR-{}'.format(
             redmine_issue['id'], redmine_issue['subject']),
-        'description': '{}\n{}{}{}'.format(
-            redmine_issue['description'],
+        'description': '{}\n{}{}'.format(
+            textile_converter.convert(redmine_issue['description']),
             relations_text,
-            changesets_text,
             custom_fields_text
         ),
         'labels': ','.join(labels),
@@ -198,12 +234,13 @@ def convert_issue(redmine_api_key, redmine_issue, redmine_user_index, gitlab_use
 
     meta = {
         'sudo_user': author_login,
-        'notes': list(convert_notes(redmine_issue['journals'],
-                                    redmine_user_index, gitlab_user_index)),
+        'notes': list(convert_notes(redmine_issue['journals'], attachments,
+                                    redmine_user_index, gitlab_user_index, redmine_statuses_index, redmine_priorities_index, redmine_trackers_index)),
+        'changesets': list(convert_changesets(redmine_issue.get('changesets', []),
+                                              redmine_user_index, gitlab_user_index)),
         'must_close': closed,
         'close_date': closed_on,
         'update_date': redmine_issue['updated_on'],
-        'uploads': list(convert_attachment(a, redmine_api_key) for a in attachments)
     }
 
     assigned_to = redmine_issue.get('assigned_to', None)
@@ -241,3 +278,30 @@ def convert_version(redmine_version):
     must_close = redmine_version['status'] == 'closed'
 
     return milestone, {'must_close': must_close}
+
+
+def convert_changesets(redmine_issue_changesets, redmine_user_index, gitlab_user_index):
+    """ Convert a list of redmine journal entries to gitlab notes
+
+    Filters out the empty notes (ex: bare status change)
+    Adds metadata as comment
+
+    :param redmine_issue_changesets: list of redmine "changesets"
+    :return: yielded couple ``data``, ``meta``. ``data`` is the API payload for
+        an changeset and meta a dict (containing, at the moment, only a
+        "sudo_user" key).
+    """
+
+    for entry in redmine_issue_changesets:
+        body = "mentioned in commit {}".format(entry['revision'])
+        try:
+            author = redmine_uid_to_gitlab_user(
+                entry['user']['id'], redmine_user_index, gitlab_user_index)['username']
+        except KeyError:
+            # In some cases you have anonymous notes, which do not exist in
+            # gitlab.
+            log.warning(
+                'Redmine user {} is unknown, attribute note '
+                'to current admin\n'.format(entry['user']))
+            author = None
+        yield {'body': body, 'system': 'true', 'noteable_type': 'commit', 'commit_id': entry['revision'], 'created_at': entry['committed_on'], 'changed_at': entry['committed_on']}, {'sudo_user': author}

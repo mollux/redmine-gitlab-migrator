@@ -112,7 +112,7 @@ class GitlabProject(Project):
 
             l.append('{} {}'.format(upload['markdown'], u['description']))
 
-        return "\n  * ".join(l)
+        return "\n".join(l)
 
     def remove_non_ascii(self, text):
         # http://stackoverflow.com/a/20078869/98491
@@ -129,9 +129,6 @@ class GitlabProject(Project):
         # attachments have to be uploaded prior to creating an issue
         # attachments are not related to an issue but can be referenced instead
         # see: https://docs.gitlab.com/ce/api/projects.html#upload-a-file
-        uploads_text = self.uploads_to_string(meta['uploads'])
-        if len(uploads_text) > 0:
-            data['description'] = "{}\n* Uploads:\n  * {}".format(data['description'], uploads_text)
 
         issues_url = '{}/issues'.format(self.api_url)
         issue = self.api.post(
@@ -142,9 +139,20 @@ class GitlabProject(Project):
         # Handle issues notes
         issue_notes_url = '{}/notes'.format(issue_url, 'notes')
         for note_data, note_meta in meta['notes']:
+            uploads = note_meta.get('uploads', [])
+            uploads_text = self.uploads_to_string(uploads)
+            if len(uploads_text) > 0:
+                note_data['body'] = "{}\n{}".format(note_data['body'], uploads_text)
+
             self.api.post(
                 issue_notes_url, data=note_data,
                 headers={'SUDO': note_meta['sudo_user']})
+
+        # Handle changeset notes
+        for changeset_data, changeset_meta in meta['changesets']:
+            self.api.post(
+                issue_notes_url, data=changeset_data,
+                headers={'SUDO': changeset_meta['sudo_user']})
 
         edit_data = {
             'created_at': data['created_at'],

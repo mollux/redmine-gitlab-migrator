@@ -129,3 +129,15 @@ class RedmineProject(Project):
     def get_versions(self):
         response = self.api.get('{}/versions.json'.format(self.public_url))
         return response['versions']
+
+    def get_issue_statuses_index(self):
+        response = self.api.get('{}/issue_statuses.json'.format(self.instance_url))
+        return {str(i["id"]): i for i in response}
+
+    def get_issue_priorities_index(self):
+        response = self.api.get('{}/enumerations/issue_priorities.json'.format(self.instance_url))
+        return {str(i["id"]): i for i in response}
+
+    def get_issue_trackers_index(self):
+        response = self.api.get('{}/trackers.json'.format(self.instance_url))
+        return {str(i["id"]): i for i in response}

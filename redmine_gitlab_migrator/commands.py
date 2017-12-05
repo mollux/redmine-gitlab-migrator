@@ -146,6 +146,9 @@ def perform_migrate_issues(args):
     gitlab_users_index = gitlab_instance.get_users_index()
     redmine_users_index = redmine_project.get_users_index()
     milestones_index = gitlab_project.get_milestones_index()
+    redmine_statuses_index = redmine_project.get_issue_statuses_index()
+    redmine_priorities_index = redmine_project.get_issue_priorities_index()
+    redmine_trackers_index = redmine_project.get_issue_trackers_index()
 
     log.debug('GitLab milestones are: {}'.format(', '.join(milestones_index) + ' '))
 
@@ -164,7 +167,7 @@ def perform_migrate_issues(args):
     # convert issues
     log.info('Converting issues')
     issues_data = (
-        convert_issue(args.redmine_key, i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields)
+        convert_issue(args.redmine_key, i, redmine_users_index, gitlab_users_index, milestones_index, closed_states, custom_fields, redmine_statuses_index, redmine_priorities_index, redmine_trackers_index)
         for i in issues)
 
     # create issues
