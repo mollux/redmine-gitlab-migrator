@@ -85,10 +85,10 @@ def convert_notes(redmine_issue_journals, redmine_issue_attachments, redmine_use
                         new_label = None
 
                     if old_label or new_label:
-                        yield {'body': '', 'system': 'true', 'noteable_type': 'label', 'new_label': new_label, 'old_label': old_label, 'created_at': entry['created_on'], 'changed_at': entry['created_on']}, {'sudo_user': author}
+                        yield {'body': '', 'system': 'true', 'noteable_type': 'label', 'new_label': new_label, 'old_label': old_label, 'created_at': entry['created_on'], 'updated_at': entry['created_on']}, {'sudo_user': author}
 
                 elif detail_entry['name'] == "description":
-                    yield {'body': '', 'system': 'true', 'noteable_type': 'description', 'created_at': entry['created_on'], 'changed_at': entry['created_on']}, {'sudo_user': author}
+                    yield {'body': '', 'system': 'true', 'noteable_type': 'description', 'created_at': entry['created_on'], 'updated_at': entry['created_on']}, {'sudo_user': author}
 
             elif detail_entry['property'] == "attachment":
                 attachments.append(redmine_issue_attachments[detail_entry['name']])
@@ -304,4 +304,4 @@ def convert_changesets(redmine_issue_changesets, redmine_user_index, gitlab_user
                 'Redmine user {} is unknown, attribute note '
                 'to current admin\n'.format(entry['user']))
             author = None
-        yield {'body': body, 'system': 'true', 'noteable_type': 'commit', 'commit_id': entry['revision'], 'created_at': entry['committed_on'], 'changed_at': entry['committed_on']}, {'sudo_user': author}
+        yield {'body': body, 'system': 'true', 'noteable_type': 'commit', 'commit_id': entry['revision'], 'created_at': entry['committed_on'], 'updated_at': entry['committed_on']}, {'sudo_user': author}

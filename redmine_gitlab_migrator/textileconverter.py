@@ -55,4 +55,3 @@ class TextileConverter():
         text = re.sub(self.regexAnyMacro, r'\1', text, re.MULTILINE | re.DOTALL)
 
         return text
-
